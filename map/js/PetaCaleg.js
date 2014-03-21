@@ -1096,6 +1096,7 @@
 
     initialize: function(options) {
       this.options = utils.extend({}, PetaCaleg.API.defaults, options);
+      this.spinner = new Spinner({lines: 14, length: 40, radius: 45});
       if (this.options.cache) {
         this._cache = {};
       }
@@ -1119,14 +1120,23 @@
         return callback(null, this._cache[url]);
       }
       var that = this;
-      return this._req = d3.json(url, function(error, res) {
-        if (error) {
-          console.warn("API error:", error, error.getAllResponseHeaders());
-          return callback.call(this, error);
-        }
+      return this._req = d3.json(url).get()
+      .on("progress", function() {
+        var target = document.getElementById('spinner-progress');
+        if (target.children[0] === undefined) that.spinner.spin(target);
+
+      })
+      .on("error", function(error) {
+        that.spinner.stop();
+        console.warn("API error:", error, error.getAllResponseHeaders());
+        return callback.call(this, error);
+      })
+      .on("load", function(res){
         if (that._cache) that._cache[url] = res.data || res;
         last = null;
         that._req = null;
+
+        that.spinner.stop();
         return callback.call(this, null, res.data || res);
       });
     },
